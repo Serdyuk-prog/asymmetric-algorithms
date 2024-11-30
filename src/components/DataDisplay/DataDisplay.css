@@ -1,0 +1,10 @@
+.data-display {
+  resize: none;
+  flex: 1;
+  height: 35px;
+}
+
+.data-fieldset {
+  display: flex;
+  flex: 1;
+}
