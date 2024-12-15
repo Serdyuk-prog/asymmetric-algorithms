@@ -17,12 +17,27 @@ function App() {
   const [cipherText, setCipherText] = useState("");
   const [cipherTextHex, setCipherTextHex] = useState("");
   const [recovered, setRecovered] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   // Генерация пары ключей RSA
   function generateKeyPair(eValue) {
     const keypair = forge.pki.rsa.generateKeyPair({ bits: 1024, e: eValue });
     const publicKeyPem = forge.pki.publicKeyToPem(keypair.publicKey);
     const privateKeyPem = forge.pki.privateKeyToPem(keypair.privateKey);
+
+    const keyPairJson = JSON.stringify({
+      publicKey: publicKeyPem,
+      privateKey: privateKeyPem
+    }, null, 2);
+  
+    const blob = new Blob([keyPairJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'keypair.json';
+    a.click();
+    URL.revokeObjectURL(url);
+
     return { publicKeyPem, privateKeyPem };
   }
 
@@ -31,6 +46,9 @@ function App() {
     const publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
     const encrypted = publicKey.encrypt(plaintext, "RSA-OAEP"); // Используется RSA-OAEP
     // return forge.util.encode64(encrypted); // Кодирование в Base64
+    setPublicKey("");
+    setPrivateKey("");
+
     return encrypted;
   }
 
@@ -42,11 +60,28 @@ function App() {
     return decrypted;
   }
 
-  useEffect(() => {
-    const { publicKeyPem, privateKeyPem } = generateKeyPair(e);
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    setSelectedFile(file);
+  };
+
+  const handleFileUploadComplete = () => {
+    if (!selectedFile) return;
     
-    setPublicKey(publicKeyPem);
-    setPrivateKey(privateKeyPem);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const contents = JSON.parse(e.target.result);
+      setPublicKey(contents.publicKey);
+      setPrivateKey(contents.privateKey);
+    };
+    reader.readAsText(selectedFile);
+  };
+
+  useEffect(() => {
+    // const { publicKeyPem, privateKeyPem } = generateKeyPair(e);
+    
+    // setPublicKey(publicKeyPem);
+    // setPrivateKey(privateKeyPem);
 
   }, []);
 
@@ -108,9 +143,12 @@ function App() {
         />
 
         <div className="button-box">
+        <input type="file" id="key-file" accept=".json" onChange={handleFileUpload} />
+        <button onClick={handleFileUploadComplete}>Upload Keys</button>
           <button disabled={cipherText === ""} onClick={handleDecrypt}>
             Decrypt
           </button>
+          
         </div>
 
         <DataDisplay data={recovered} legend="Recovered Plaintext" />
